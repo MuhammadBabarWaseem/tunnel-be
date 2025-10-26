@@ -138,13 +138,26 @@ server.listen(PORT, () => {
   console.log(`Tunnel ports available: ${process.env.TUNNEL_START_PORT}-${process.env.TUNNEL_END_PORT}`);
   
   // Email OTP configuration check
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-    console.warn('\n⚠️  WARNING: Email configuration not found!');
-    console.warn('OTP login feature requires email settings.');
-    console.warn('Please add EMAIL_USER and EMAIL_PASSWORD to your .env file.');
-    console.warn('See EMAIL_SETUP.md for instructions.\n');
+  const emailService = require('./services/emailService');
+  const emailProvider = emailService.getProvider();
+  
+  if (emailProvider === 'sendgrid') {
+    if (!process.env.SENDGRID_API_KEY) {
+      console.warn('\n⚠️  WARNING: SendGrid API key not found!');
+      console.warn('Please add SENDGRID_API_KEY to your .env file.');
+      console.warn('See SendGrid documentation for setup instructions.\n');
+    } else {
+      console.log(`✅ Email OTP enabled via SendGrid: ${process.env.SENDGRID_FROM_EMAIL || process.env.EMAIL_USER}`);
+    }
   } else {
-    console.log(`✅ Email OTP enabled: ${process.env.EMAIL_USER}`);
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      console.warn('\n⚠️  WARNING: Email configuration not found!');
+      console.warn('OTP login feature requires email settings.');
+      console.warn('Please add EMAIL_USER and EMAIL_PASSWORD to your .env file.');
+      console.warn('See EMAIL_SETUP.md for instructions.\n');
+    } else {
+      console.log(`✅ Email OTP enabled via nodemailer: ${process.env.EMAIL_USER}`);
+    }
   }
 });
 
