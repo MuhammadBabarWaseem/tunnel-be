@@ -1,0 +1,42 @@
+{
+  "name": "custom-ngrok",
+  "version": "1.0.0",
+  "description": "Custom VPN/Port Forwarding Solution for Branch Networks",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "nodemon server/index.js",
+    "client": "npm start --prefix client",
+    "build": "npm run build --prefix client",
+    "install-all": "npm install && cd client && npm install && cd ../agent && npm install",
+    "create-admin": "node scripts/create-admin.js",
+    "generate-secret": "node scripts/generate-secret.js",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "keywords": [
+    "vpn",
+    "port-forwarding",
+    "tunnel",
+    "ngrok"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "http-proxy": "^1.18.1",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.0.3",
+    "socket.io": "^4.6.1",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.1",
+    "nodemon": "^2.0.22"
+  }
+}
