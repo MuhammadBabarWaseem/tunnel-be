@@ -6,12 +6,22 @@ const { protect } = require('../middleware/auth');
 // Get all active tunnels
 router.get('/', protect, async (req, res) => {
   try {
+    console.log('User requesting tunnels:', {
+      id: req.user._id,
+      username: req.user.username,
+      role: req.user.role
+    });
+    
     const tunnels = await Tunnel.find({ active: true }).populate({
       path: 'branch',
       select: 'name location publicUrl',
     });
+    
+    console.log('Found active tunnels:', tunnels.length);
+    
     res.json(tunnels);
   } catch (error) {
+    console.error('Error fetching tunnels:', error);
     res.status(500).json({ message: error.message });
   }
 });

@@ -1,18 +1,20 @@
-require("dotenv").config();
-const express = require("express");
-const http = require("http");
-const socketIO = require("socket.io");
-const cors = require("cors");
-const compression = require("compression");
-const connectDB = require("./config/db");
-const portManager = require("./utils/portManager");
-const TunnelService = require("./services/tunnelService");
-const Branch = require("./models/Branch");
+require('dotenv').config();
+const express = require('express');
+const http = require('http');
+const socketIO = require('socket.io');
+const cors = require('cors');
+const compression = require('compression');
+const connectDB = require('./config/db');
+const portManager = require('./utils/portManager');
+const TunnelService = require('./services/tunnelService');
+const Branch = require('./models/Branch');
 
 // Routes
-const authRoutes = require("./routes/auth");
-const branchRoutes = require("./routes/branches");
-const tunnelRoutes = require("./routes/tunnels");
+const authRoutes = require('./routes/auth');
+const branchRoutes = require('./routes/branches');
+const tunnelRoutes = require('./routes/tunnels');
+const userRoutes = require('./routes/users');
+const activityRoutes = require('./routes/activity');
 
 // Connect to database
 connectDB();
@@ -21,12 +23,12 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
+    origin: '*',
+    methods: ['GET', 'POST'],
   },
   pingTimeout: 120000, // 2 minutes
   pingInterval: 15000, // 15 seconds
-  transports: ["websocket", "polling"],
+  transports: ['websocket', 'polling'],
   perMessageDeflate: true, // Enable compression for WebSocket
   allowUpgrades: true,
   upgradeTimeout: 30000,
@@ -38,36 +40,41 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Make io available in routes
+app.set('io', io);
+
 // Initialize port manager
 portManager.initialize().then(() => {
-  console.log("Port manager initialized");
+  console.log('Port manager initialized');
 });
 
 // Initialize tunnel service
 const tunnelService = new TunnelService(io);
 
 // API Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/branches", branchRoutes);
-app.use("/api/tunnels", tunnelRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/branches', branchRoutes);
+app.use('/api/tunnels', tunnelRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/activity', activityRoutes);
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", message: "Server is running" });
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Server is running' });
 });
 
 // Socket.IO connection handling
-io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
 
   // Branch agent connection
-  socket.on("agent-connect", async (data) => {
+  socket.on('agent-connect', async (data) => {
     try {
       const { apiKey } = data;
-
+      
       // Verify API key
       const branch = await Branch.findOne({ apiKey });
       if (!branch) {
-        socket.emit("error", { message: "Invalid API key" });
+        socket.emit('error', { message: 'Invalid API key' });
         socket.disconnect();
         return;
       }
@@ -81,7 +88,7 @@ io.on("connection", (socket) => {
         socket
       );
 
-      socket.emit("tunnel-created", {
+      socket.emit('tunnel-created', {
         branchId: branch._id,
         branchName: branch.name,
         port: tunnelInfo.port,
@@ -89,37 +96,38 @@ io.on("connection", (socket) => {
       });
 
       // Broadcast to dashboard clients
-      io.emit("branch-status-changed", {
+      io.emit('branch-status-changed', {
         branchId: branch._id,
-        status: "online",
+        status: 'online',
         port: tunnelInfo.port,
         publicUrl: tunnelInfo.publicUrl,
       });
+
     } catch (error) {
-      console.error("Agent connect error:", error);
-      socket.emit("error", { message: error.message });
+      console.error('Agent connect error:', error);
+      socket.emit('error', { message: error.message });
     }
   });
 
   // Handle disconnection
-  socket.on("disconnect", async () => {
-    console.log("Client disconnected:", socket.id);
-
+  socket.on('disconnect', async () => {
+    console.log('Client disconnected:', socket.id);
+    
     const tunnelInfo = tunnelService.getTunnelBySocketId(socket.id);
     if (tunnelInfo) {
       await tunnelService.closeTunnel(tunnelInfo.branchId);
-
+      
       // Broadcast to dashboard clients
-      io.emit("branch-status-changed", {
+      io.emit('branch-status-changed', {
         branchId: tunnelInfo.branchId,
-        status: "offline",
+        status: 'offline',
       });
     }
   });
 
   // Heartbeat
-  socket.on("heartbeat", () => {
-    socket.emit("heartbeat-ack");
+  socket.on('heartbeat', () => {
+    socket.emit('heartbeat-ack');
   });
 });
 
@@ -127,7 +135,16 @@ const PORT = process.env.PORT || 5050;
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(
-    `Tunnel ports available: ${process.env.TUNNEL_START_PORT}-${process.env.TUNNEL_END_PORT}`
-  );
+  console.log(`Tunnel ports available: ${process.env.TUNNEL_START_PORT}-${process.env.TUNNEL_END_PORT}`);
+  
+  // Email OTP configuration check
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.warn('\n⚠️  WARNING: Email configuration not found!');
+    console.warn('OTP login feature requires email settings.');
+    console.warn('Please add EMAIL_USER and EMAIL_PASSWORD to your .env file.');
+    console.warn('See EMAIL_SETUP.md for instructions.\n');
+  } else {
+    console.log(`✅ Email OTP enabled: ${process.env.EMAIL_USER}`);
+  }
 });
+

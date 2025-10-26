@@ -8,9 +8,30 @@ const { protect, admin } = require('../middleware/auth');
 // Get all branches
 router.get('/', protect, async (req, res) => {
   try {
-    const branches = await Branch.find().populate('createdBy', 'username email');
+    let branches;
+    
+    console.log('User requesting branches:', {
+      id: req.user._id,
+      username: req.user.username,
+      role: req.user.role,
+      allowedBranches: req.user.allowedBranches
+    });
+    
+    // Admin can see all branches
+    if (req.user.role === 'admin') {
+      branches = await Branch.find().populate('createdBy', 'username email');
+      console.log('Admin - Found branches:', branches.length);
+    } else {
+      // Regular users can only see their allowed branches
+      branches = await Branch.find({
+        _id: { $in: req.user.allowedBranches || [] }
+      }).populate('createdBy', 'username email');
+      console.log('User - Found branches:', branches.length, 'from allowed:', req.user.allowedBranches?.length || 0);
+    }
+    
     res.json(branches);
   } catch (error) {
+    console.error('Error fetching branches:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -22,6 +43,13 @@ router.get('/:id', protect, async (req, res) => {
     if (!branch) {
       return res.status(404).json({ message: 'Branch not found' });
     }
+    
+    // Check if user has access to this branch
+    if (req.user.role !== 'admin' && 
+        !req.user.allowedBranches.some(id => id.toString() === branch._id.toString())) {
+      return res.status(403).json({ message: 'Access denied to this branch' });
+    }
+    
     res.json(branch);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -96,6 +124,14 @@ router.delete('/:id', protect, admin, async (req, res) => {
 // Get branch logs
 router.get('/:id/logs', protect, async (req, res) => {
   try {
+    // Check if user has access to this branch
+    if (req.user.role !== 'admin') {
+      const hasAccess = req.user.allowedBranches.some(id => id.toString() === req.params.id);
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied to this branch' });
+      }
+    }
+    
     const logs = await Log.find({ branch: req.params.id })
       .sort({ createdAt: -1 })
       .limit(100);

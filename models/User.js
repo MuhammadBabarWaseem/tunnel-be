@@ -23,6 +23,16 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'user'],
     default: 'user',
   },
+  allowedBranches: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Branch',
+  }],
+  otp: {
+    type: String,
+  },
+  otpExpiry: {
+    type: Date,
+  },
 }, {
   timestamps: true,
 });
