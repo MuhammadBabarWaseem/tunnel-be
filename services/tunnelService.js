@@ -1,10 +1,10 @@
-const http = require('http');
-const httpProxy = require('http-proxy');
-const { v4: uuidv4 } = require('uuid');
-const Branch = require('../models/Branch');
-const Tunnel = require('../models/Tunnel');
-const Log = require('../models/Log');
-const portManager = require('../utils/portManager');
+const http = require("http");
+const httpProxy = require("http-proxy");
+const { v4: uuidv4 } = require("uuid");
+const Branch = require("../models/Branch");
+const Tunnel = require("../models/Tunnel");
+const Log = require("../models/Log");
+const portManager = require("../utils/portManager");
 
 class TunnelService {
   constructor(io) {
@@ -16,7 +16,7 @@ class TunnelService {
     try {
       const branch = await Branch.findById(branchId);
       if (!branch) {
-        throw new Error('Branch not found');
+        throw new Error("Branch not found");
       }
 
       // Check if tunnel already exists
@@ -34,17 +34,17 @@ class TunnelService {
       });
 
       // Handle proxy errors
-      proxy.on('error', async (err, req, res) => {
-        console.error('Proxy error:', err);
+      proxy.on("error", async (err, req, res) => {
+        console.error("Proxy error:", err);
         if (res && !res.headersSent) {
-          res.writeHead(502, { 'Content-Type': 'text/plain' });
-          res.end('Bad Gateway - Unable to reach branch portal');
+          res.writeHead(502, { "Content-Type": "text/plain" });
+          res.end("Bad Gateway - Unable to reach branch portal");
         }
 
         await Log.create({
           branch: branchId,
-          type: 'error',
-          message: 'Proxy error',
+          type: "error",
+          message: "Proxy error",
           metadata: { error: err.message },
         });
       });
@@ -53,25 +53,25 @@ class TunnelService {
       const server = http.createServer((req, res) => {
         // Generate unique ID for this request
         const requestId = uuidv4();
-        
+
         console.log(`[Tunnel ${port}] ${req.method} ${req.url}`);
 
         // Collect request body
         let body = [];
-        req.on('data', chunk => {
+        req.on("data", (chunk) => {
           body.push(chunk);
         });
 
-        req.on('end', () => {
+        req.on("end", () => {
           const bodyBuffer = Buffer.concat(body);
-          
+
           // Forward complete request through WebSocket to branch
-          socket.emit('proxy-request', {
+          socket.emit("proxy-request", {
             id: requestId,
             method: req.method,
             url: req.url,
             headers: req.headers,
-            body: bodyBuffer.toString('base64'), // Send as base64 to handle binary data
+            body: bodyBuffer.toString("base64"), // Send as base64 to handle binary data
           });
 
           // Listen for response from branch
@@ -80,38 +80,38 @@ class TunnelService {
               try {
                 // Set response headers
                 res.writeHead(data.statusCode, data.headers);
-                
+
                 // Send response body (decode from base64 if needed)
-                if (data.bodyEncoding === 'base64') {
-                  res.end(Buffer.from(data.body, 'base64'));
+                if (data.bodyEncoding === "base64") {
+                  res.end(Buffer.from(data.body, "base64"));
                 } else {
                   res.end(data.body);
                 }
-                
-                socket.off('proxy-response', responseHandler);
+
+                socket.off("proxy-response", responseHandler);
               } catch (err) {
-                console.error('Error sending response:', err);
+                console.error("Error sending response:", err);
                 if (!res.headersSent) {
-                  res.writeHead(500, { 'Content-Type': 'text/plain' });
-                  res.end('Internal Server Error');
+                  res.writeHead(500, { "Content-Type": "text/plain" });
+                  res.end("Internal Server Error");
                 }
               }
             }
           };
 
-          socket.on('proxy-response', responseHandler);
+          socket.on("proxy-response", responseHandler);
 
           // Timeout after 30 seconds
           const timeout = setTimeout(() => {
             if (!res.headersSent) {
-              socket.off('proxy-response', responseHandler);
-              res.writeHead(504, { 'Content-Type': 'text/plain' });
-              res.end('Gateway Timeout');
+              socket.off("proxy-response", responseHandler);
+              res.writeHead(504, { "Content-Type": "text/plain" });
+              res.end("Gateway Timeout");
             }
           }, 30000);
 
           // Clean up timeout when response is sent
-          res.on('finish', () => {
+          res.on("finish", () => {
             clearTimeout(timeout);
           });
         });
@@ -129,8 +129,11 @@ class TunnelService {
       this.tunnels.set(branchId, { proxy, server, port, socketId });
 
       // Update branch status
-      const publicUrl = `http://localhost:${port}`;
-      branch.status = 'online';
+      // Get server's public URL from environment or use IP
+      const serverHost =
+        process.env.PUBLIC_URL || process.env.SERVER_HOST || "localhost";
+      const publicUrl = `http://${serverHost}:${port}`;
+      branch.status = "online";
       branch.assignedPort = port;
       branch.publicUrl = publicUrl;
       branch.lastConnected = new Date();
@@ -147,16 +150,15 @@ class TunnelService {
       // Log connection
       await Log.create({
         branch: branchId,
-        type: 'connection',
+        type: "connection",
         message: `Tunnel established on port ${port}`,
         metadata: { port, publicUrl },
       });
 
       console.log(`Tunnel created for branch ${branch.name} on port ${port}`);
       return { port, publicUrl };
-
     } catch (error) {
-      console.error('Error creating tunnel:', error);
+      console.error("Error creating tunnel:", error);
       throw error;
     }
   }
@@ -184,7 +186,7 @@ class TunnelService {
       // Update branch status
       const branch = await Branch.findById(branchId);
       if (branch) {
-        branch.status = 'offline';
+        branch.status = "offline";
         branch.assignedPort = null;
         branch.publicUrl = null;
         await branch.save();
@@ -199,14 +201,14 @@ class TunnelService {
       // Log disconnection
       await Log.create({
         branch: branchId,
-        type: 'disconnection',
+        type: "disconnection",
         message: `Tunnel closed on port ${port}`,
         metadata: { port },
       });
 
       console.log(`Tunnel closed for branch ${branchId}`);
     } catch (error) {
-      console.error('Error closing tunnel:', error);
+      console.error("Error closing tunnel:", error);
     }
   }
 
@@ -225,4 +227,3 @@ class TunnelService {
 }
 
 module.exports = TunnelService;
-
