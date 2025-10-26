@@ -9,11 +9,18 @@ class PortManager {
   }
 
   async initialize() {
-    // Load used ports from database
-    const activeTunnels = await Tunnel.find({ active: true });
-    activeTunnels.forEach(tunnel => {
-      this.usedPorts.add(tunnel.port);
-    });
+    try {
+      // Load used ports from database
+      const activeTunnels = await Tunnel.find({ active: true });
+      activeTunnels.forEach(tunnel => {
+        this.usedPorts.add(tunnel.port);
+      });
+      console.log(`Port manager loaded ${activeTunnels.length} active tunnels`);
+    } catch (error) {
+      console.error('Error initializing port manager:', error);
+      // Continue with empty port set if database query fails
+      this.usedPorts = new Set();
+    }
   }
 
   async getAvailablePort() {

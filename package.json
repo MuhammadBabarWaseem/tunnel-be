@@ -2,10 +2,10 @@
   "name": "custom-ngrok",
   "version": "1.0.0",
   "description": "SICHN VPN/Port Forwarding Solution for Branch Networks",
-  "main": "server/index.js",
+  "main": "./index.js",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "nodemon server/index.js",
+    "server": "nodemon ./index.js",
     "client": "npm start --prefix client",
     "build": "npm run build --prefix client",
     "install-all": "npm install && cd client && npm install && cd ../agent && npm install",
