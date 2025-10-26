@@ -24,10 +24,12 @@ const io = socketIO(server, {
     origin: "*",
     methods: ["GET", "POST"],
   },
-  pingTimeout: 60000,
-  pingInterval: 25000,
+  pingTimeout: 120000, // 2 minutes
+  pingInterval: 15000, // 15 seconds
   transports: ["websocket", "polling"],
   perMessageDeflate: true, // Enable compression for WebSocket
+  allowUpgrades: true,
+  upgradeTimeout: 30000,
 });
 
 // Middleware
