@@ -57,9 +57,9 @@ app.get("/api/health", (req, res) => {
 });
 
 // Handle tunnel requests - path-based routing
-app.all("/tunnel/:pathName*", (req, res) => {
+app.all("/tunnel/:pathName*", async (req, res) => {
   const pathName = req.params.pathName;
-  tunnelService.handleTunnelRequest(req, res, pathName);
+  await tunnelService.handleTunnelRequest(req, res, pathName);
 });
 
 // Socket.IO connection handling

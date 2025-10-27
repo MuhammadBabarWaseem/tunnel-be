@@ -134,32 +134,29 @@ class TunnelService {
   }
 
   // New method to handle tunnel requests by path
-  handleTunnelRequest(req, res, pathName) {
-    // Find tunnel by path name
-    let targetTunnel = null;
-    let targetBranchId = null;
+  async handleTunnelRequest(req, res, pathName) {
+    // Find tunnel by path name from database
+    const tunnel = await Tunnel.findOne({
+      path: pathName,
+      active: true,
+    }).populate("branch");
 
-    for (const [branchId, tunnelInfo] of this.tunnels.entries()) {
-      const pathSafeName = tunnelInfo.branchName
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "");
-      if (pathSafeName === pathName) {
-        targetTunnel = tunnelInfo;
-        targetBranchId = branchId;
-        break;
-      }
-    }
-
-    if (!targetTunnel) {
+    if (!tunnel) {
       res.writeHead(404, { "Content-Type": "text/plain" });
       res.end("Tunnel not found");
       return;
     }
 
+    // Get tunnel info from memory
+    const tunnelInfo = this.tunnels.get(tunnel.branch._id.toString());
+    if (!tunnelInfo) {
+      res.writeHead(503, { "Content-Type": "text/plain" });
+      res.end("Tunnel offline");
+      return;
+    }
+
     // Get the socket for this tunnel
-    const socket = this.io.sockets.sockets.get(targetTunnel.socketId);
+    const socket = this.io.sockets.sockets.get(tunnelInfo.socketId);
     if (!socket) {
       res.writeHead(503, { "Content-Type": "text/plain" });
       res.end("Tunnel offline");
