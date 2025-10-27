@@ -196,6 +196,9 @@ class TunnelService {
 
       // Listen for response from branch
       const responseHandler = (data) => {
+        console.log(
+          `[Tunnel Response] Received response for request ${requestId}: ${data.statusCode}`
+        );
         if (data.id === requestId) {
           try {
             // Set response headers
@@ -209,6 +212,9 @@ class TunnelService {
             }
 
             socket.off("proxy-response", responseHandler);
+            console.log(
+              `[Tunnel Response] Sent response to client: ${data.statusCode}`
+            );
           } catch (err) {
             console.error("Error sending response:", err);
             if (!res.headersSent) {
