@@ -21,11 +21,19 @@ class TunnelService {
       }
 
       // Generate path-safe branch name for URL
-      const pathSafeName = branch.name
+      let pathSafeName = branch.name
         .toLowerCase()
         .replace(/[^a-z0-9-]/g, "-")
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "");
+
+      // Ensure path is unique by appending a number if needed
+      let counter = 1;
+      let originalPath = pathSafeName;
+      while (await Tunnel.findOne({ path: pathSafeName, active: true })) {
+        pathSafeName = `${originalPath}-${counter}`;
+        counter++;
+      }
 
       // Create public URL using path-based routing
       const serverHost =
@@ -52,6 +60,7 @@ class TunnelService {
       await Tunnel.create({
         branch: branchId,
         port: null, // No port for path-based routing
+        path: pathSafeName, // Store the path for this tunnel
         socketId,
         active: true,
       });

@@ -8,7 +8,12 @@ const tunnelSchema = new mongoose.Schema({
   },
   port: {
     type: Number,
-    required: true,
+    required: false,
+    unique: false,
+  },
+  path: {
+    type: String,
+    required: false,
     unique: true,
   },
   socketId: {
