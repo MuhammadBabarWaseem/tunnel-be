@@ -135,6 +135,8 @@ class TunnelService {
 
   // New method to handle tunnel requests by path
   async handleTunnelRequest(req, res, pathName) {
+    console.log(`[Tunnel Request] Looking for path: ${pathName}`);
+
     // Find tunnel by path name from database
     const tunnel = await Tunnel.findOne({
       path: pathName,
@@ -142,10 +144,15 @@ class TunnelService {
     }).populate("branch");
 
     if (!tunnel) {
+      console.log(`[Tunnel Request] No tunnel found for path: ${pathName}`);
       res.writeHead(404, { "Content-Type": "text/plain" });
       res.end("Tunnel not found");
       return;
     }
+
+    console.log(
+      `[Tunnel Request] Found tunnel for branch: ${tunnel.branch.name}`
+    );
 
     // Get tunnel info from memory
     const tunnelInfo = this.tunnels.get(tunnel.branch._id.toString());

@@ -45,6 +45,13 @@ app.set("io", io);
 // Initialize tunnel service
 const tunnelService = new TunnelService(io);
 
+// Handle tunnel requests - path-based routing (MUST be before API routes)
+app.all("/tunnel/:pathName*", async (req, res) => {
+  const pathName = req.params.pathName;
+  console.log(`[Server] Tunnel request received for path: ${pathName}`);
+  await tunnelService.handleTunnelRequest(req, res, pathName);
+});
+
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/branches", branchRoutes);
@@ -56,10 +63,12 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Server is running" });
 });
 
-// Handle tunnel requests - path-based routing
-app.all("/tunnel/:pathName*", async (req, res) => {
-  const pathName = req.params.pathName;
-  await tunnelService.handleTunnelRequest(req, res, pathName);
+// Test route to verify tunnel routing
+app.get("/test-tunnel", (req, res) => {
+  res.json({
+    message: "Tunnel routing is working",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Socket.IO connection handling
